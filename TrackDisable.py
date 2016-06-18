@@ -2,6 +2,7 @@
 
 import sys
 import os
+import platform
 import subprocess
 import argparse
 import locale
@@ -10,7 +11,7 @@ def main():
 
   parser = argparse.ArgumentParser(description="MP4/M4V track disabler.")
   parser.add_argument('-t', '--track', help='Track type to disable AAC or  AC-3.')
-  parser.add_argument('-i', '--input', help='The source file/folder.')
+  parser.add_argument('-i', '--input', help='The source file or directory.')
   args = vars(parser.parse_args())
 
 
@@ -21,7 +22,7 @@ def main():
   print
   
   if (not args['input']):
-    print "No input file/folder specified"
+    print "No input file/directory specified"
     exit(0)
   if (not args['track']):
     print "No track type specified"
@@ -34,13 +35,18 @@ def main():
     exit(0)
     
   # Look to see if the input has an extension
-  # This will determine weather we have a single file or folder
+  # This will determine weather we have a single file or a directory
   
   baseName = os.path.basename(str(args['input']))
   ext = baseName.split('.')[1:]
   
   if not ext:
-    print "Processing folder"
+    print "Processing directory " + args['input']
+    print
+    processDirectory(args['input'], trackType)
+    print
+    print "Finished....."
+    exit(0)
   else:
     ext = ext[0].lower()
     if (ext not in ('mp4', 'm4v')):
@@ -51,11 +57,25 @@ def main():
        print
        print "Finished....."
        exit(0)
+
+def processDirectory(input, trackType):
+  for root, dir, files in os.walk(input):
+    for filename in files:
+      if filename.lower().endswith(('.mp4', '.m4v')):
+        processFile(root + os.path.sep + filename, trackType)
       
 def processFile(input, trackType):
-  cmd = "mp4box"
+  if platform.system() == 'Darwin':
+    cmd = "/Applications/Osmo4.app/Contents/MacOS/MP4Box"
+  elif platform.system() == 'Windows':
+    cmd = "mp4box"
+  else:
+    print "Unsupported OS! Exiting."
+    exit(0)
+    
+  print "--------------------------------------------------------------------------------"
   print "Input file: " + input + "\n"
-  p = subprocess.Popen([cmd, '-info', input], shell=True, stderr=subprocess.PIPE)
+  p = subprocess.Popen([cmd, '-info', input], shell=False, stderr=subprocess.PIPE)
 
   o = ''
   while True:
@@ -90,9 +110,10 @@ def processFile(input, trackType):
   print "Found " + trackType + " audio at track " + track
     
   print "Disabling track " + track
-  p = subprocess.call([cmd, "-disable", track, input], shell=True)
+  p = subprocess.call([cmd, "-disable", track, input], shell=False)
   print "Finished disabling track."      
-
+  print "--------------------------------------------------------------------------------"
+  print
     
 if __name__ == '__main__':
     main()
